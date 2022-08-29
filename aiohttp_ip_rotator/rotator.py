@@ -187,7 +187,7 @@ class RotatingClientSession:
         headers.pop("X-Forwarded-For", None)
         kwargs.pop("headers", None)
         headers["X-Forwarded-Header"] = x_forwarded_for
-        return await self._s.request(method, url, headers=headers,  **kwargs)
+        return await self._s.request(method, url, headers=headers, **kwargs)
 
     async def get(self, url: str, *, allow_redirects: bool = True, **kwargs) -> ClientResponse:
         return await self.request("GET", url, allow_redirects=allow_redirects, **kwargs)

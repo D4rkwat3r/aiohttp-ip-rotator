@@ -36,6 +36,7 @@ class RotatingClientSession:
         ]
 
     async def __aenter__(self):
+        await self.start()
         return self
 
     async def __aexit__(self, *args, **kwargs):

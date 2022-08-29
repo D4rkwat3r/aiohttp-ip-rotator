@@ -185,6 +185,7 @@ class RotatingClientSession:
         x_forwarded_for = headers.get("X-Forwarded-For") or inet_ntoa(pack(">I", randint(1, 0xffffffff)))
         headers["Host"] = endpoint
         headers.pop("X-Forwarded-For", None)
+        kwargs.pop("headers", None)
         headers["X-Forwarded-Header"] = x_forwarded_for
         return await self._s.request(method, url, headers=headers,  **kwargs)
 

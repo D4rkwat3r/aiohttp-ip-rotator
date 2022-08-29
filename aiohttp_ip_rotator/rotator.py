@@ -155,6 +155,7 @@ class RotatingClientSession:
                         if e.response["Error"]["Code"] == "TooManyRequestsException":
                             self._print_if_verbose("Too many requests when deleting the API, sleeping for 3 seconds")
                             await sleep(3)
+                            return await self._clear_region_apis(region)
                     self._print_if_verbose(f"Deleted rest API with id \"{api['id']}\"")
 
     async def _clear_apis(self) -> None:

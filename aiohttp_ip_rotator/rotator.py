@@ -165,7 +165,7 @@ class RotatingClientSession:
         self._print_if_verbose(f"Starting IP Rotating APIs in {len(self.regions)} regions")
         endpoints = await gather(*[create_task(self._create_api(region)) for region in self.regions])
         self.endpoints.extend([endpoint for endpoint in endpoints if endpoint is not None])
-        self._print_if_verbose(f"API launched in {len(self.endpoints)} regions out of {len(self.regions)}")
+        self._print_if_verbose(f"API started in {len(self.endpoints)} regions out of {len(self.regions)}")
 
     async def request(self, method: str, url: str, **kwargs) -> ClientResponse:
         if len(self.endpoints) == 0:

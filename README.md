@@ -8,7 +8,7 @@ from aiohttp_ip_rotator import RotatingClientSession
 
 
 async def main():
-    session = RotatingClientSession("https://api.ipify.org", "AKIATRPUYEQXPCQR52PF", "7ZIggewDwPLQK+lgx4W8ca+A4+iyPUrEC729M4if")
+    session = RotatingClientSession("https://api.ipify.org", "aws access key id", "aws access key secret")
     await session.start()
     for i in range(5):
         response = await session.get("https://api.ipify.org")

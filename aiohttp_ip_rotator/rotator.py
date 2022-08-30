@@ -15,9 +15,9 @@ from asyncio import gather
 from asyncio import create_task
 
 
-class RotatingClientSession:
+class RotatingClientSession(ClientSession):
     def __init__(self, target: str, key_id: Optional[str] = None, key_secret: Optional[str] = None, verbose: bool = False, *args, **kwargs):
-        self._s = ClientSession(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.target = target if not target.endswith("/") else target[:-1]
         if not target.startswith("http://") and not target.startswith("https://"):
             raise ValueError("Invalid URL schema")
@@ -36,7 +36,6 @@ class RotatingClientSession:
         ]
 
     async def __aenter__(self):
-        await self.start()
         return self
 
     async def __aexit__(self, *args, **kwargs):
@@ -44,7 +43,7 @@ class RotatingClientSession:
 
     async def close(self):
         await self._clear_apis()
-        await self._s.close()
+        await super().close()
 
     def _print_if_verbose(self, message: str):
         if self.verbose: print(f">> {message}")
@@ -166,7 +165,7 @@ class RotatingClientSession:
         self._print_if_verbose(f"Starting IP Rotating APIs in {len(self.regions)} regions")
         endpoints = await gather(*[create_task(self._create_api(region)) for region in self.regions])
         self.endpoints.extend([endpoint for endpoint in endpoints if endpoint is not None])
-        self._print_if_verbose(f"API started in {len(self.endpoints)} regions out of {len(self.regions)}")
+        self._print_if_verbose(f"API launched in {len(self.endpoints)} regions out of {len(self.regions)}")
 
     async def request(self, method: str, url: str, **kwargs) -> ClientResponse:
         if len(self.endpoints) == 0:
@@ -187,7 +186,7 @@ class RotatingClientSession:
         headers.pop("X-Forwarded-For", None)
         kwargs.pop("headers", None)
         headers["X-Forwarded-Header"] = x_forwarded_for
-        return await self._s.request(method, url, headers=headers, **kwargs)
+        return await super().request(method, url, headers=headers, **kwargs)
 
     async def get(self, url: str, *, allow_redirects: bool = True, **kwargs) -> ClientResponse:
         return await self.request("GET", url, allow_redirects=allow_redirects, **kwargs)

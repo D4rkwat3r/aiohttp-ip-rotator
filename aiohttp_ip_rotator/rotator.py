@@ -115,7 +115,7 @@ class RotatingClientSession(ClientSession):
         )
         await client.create_deployment(
             restApiId=api_id,
-            stageName="ProxyStage"
+            stageName="proxy-stage"
         )
 
     async def _create_api(self, region: str) -> Optional[str]:
@@ -177,7 +177,7 @@ class RotatingClientSession(ClientSession):
         endpoint = choice(self.endpoints)
         try: path = url.split("://", 1)[1].split("/", 1)[1]
         except IndexError: path = ""
-        url = f"https://{endpoint}/ProxyStage/{path}"
+        url = f"https://{endpoint}/proxy-stage/{path}"
         headers = kwargs.get("headers") or dict()
         if not isinstance(headers, dict):
             raise ValueError("Headers must be a dictionary-like object")

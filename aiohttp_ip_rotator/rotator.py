@@ -13,19 +13,31 @@ from aioboto3.session import Session
 from asyncio import sleep
 from asyncio import gather
 from asyncio import create_task
+from uuid import uuid4
 
 
 class RotatingClientSession(ClientSession):
-    def __init__(self, target: str, key_id: Optional[str] = None, key_secret: Optional[str] = None, verbose: bool = False, *args, **kwargs):
+    def __init__(
+        self,
+        target: str,
+        key_id: Optional[str] = None,
+        key_secret: Optional[str] = None,
+        host_header: Optional[str] = None,
+        verbose: bool = False,
+        *args,
+        **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.target = target if not target.endswith("/") else target[:-1]
         if not target.startswith("http://") and not target.startswith("https://"):
             raise ValueError("Invalid URL schema")
         self.key_id = key_id
         self.key_secret = key_secret
+        self.host_header = host_header or self.target.split("://", 1)[1].split("/", 1)[0]
         self.verbose = verbose
         self.endpoints = []
-        self.name = f"IP Rotator for {self.target}"
+        self.name = f"IP Rotator for {self.target} ({str(uuid4())})"
+        self.active = False
         self.regions = [
             "us-east-1", "us-east-2", "us-west-1", "us-west-2",
             "eu-west-1", "eu-west-2", "eu-west-3", "eu-north-1",
@@ -36,6 +48,7 @@ class RotatingClientSession(ClientSession):
         ]
 
     async def __aenter__(self):
+        await self.start()
         return self
 
     async def __aexit__(self, *args, **kwargs):
@@ -44,6 +57,7 @@ class RotatingClientSession(ClientSession):
     async def close(self):
         await self._clear_apis()
         await super().close()
+        self.active = False
 
     def _print_if_verbose(self, message: str):
         if self.verbose: print(f">> {message}")
@@ -74,7 +88,8 @@ class RotatingClientSession(ClientSession):
             authorizationType="NONE",
             requestParameters={
                 "method.request.path.proxy": True,
-                "method.request.header.X-Forwarded-Header": True
+                "method.request.header.X-Forwarded-Header": True,
+                "method.request.header.X-Host": True
             }
         )
         await client.put_integration(
@@ -87,7 +102,8 @@ class RotatingClientSession(ClientSession):
             connectionType="INTERNET",
             requestParameters={
                 "integration.request.path.proxy": "method.request.path.proxy",
-                "integration.request.header.X-Forwarded-For": "method.request.header.X-Forwarded-Header"
+                "integration.request.header.X-Forwarded-For": "method.request.header.X-Forwarded-Header",
+                "integration.request.header.Host": "method.request.header.X-Host"
             }
         )
         await client.put_method(
@@ -97,7 +113,8 @@ class RotatingClientSession(ClientSession):
             authorizationType="NONE",
             requestParameters={
                 "method.request.path.proxy": True,
-                "method.request.header.X-Forwarded-Header": True
+                "method.request.header.X-Forwarded-Header": True,
+                "method.request.header.X-Host": True
             }
         )
         await client.put_integration(
@@ -110,7 +127,8 @@ class RotatingClientSession(ClientSession):
             connectionType="INTERNET",
             requestParameters={
                 "integration.request.path.proxy": "method.request.path.proxy",
-                "integration.request.header.X-Forwarded-For": "method.request.header.X-Forwarded-Header"
+                "integration.request.header.X-Forwarded-For": "method.request.header.X-Forwarded-Header",
+                "integration.request.header.Host": "method.request.header.X-Host"
             }
         )
         await client.create_deployment(
@@ -166,6 +184,7 @@ class RotatingClientSession(ClientSession):
         endpoints = await gather(*[create_task(self._create_api(region)) for region in self.regions])
         self.endpoints.extend([endpoint for endpoint in endpoints if endpoint is not None])
         self._print_if_verbose(f"API launched in {len(self.endpoints)} regions out of {len(self.regions)}")
+        self.active = True
 
     async def request(self, method: str, url: str, **kwargs) -> ClientResponse:
         if len(self.endpoints) == 0:
@@ -181,11 +200,10 @@ class RotatingClientSession(ClientSession):
         headers = kwargs.get("headers") or dict()
         if not isinstance(headers, dict):
             raise ValueError("Headers must be a dictionary-like object")
-        x_forwarded_for = headers.get("X-Forwarded-For") or inet_ntoa(pack(">I", randint(1, 0xffffffff)))
-        headers["Host"] = endpoint
         headers.pop("X-Forwarded-For", None)
         kwargs.pop("headers", None)
-        headers["X-Forwarded-Header"] = x_forwarded_for
+        headers["X-Host"] = self.host_header
+        headers["X-Forwarded-Header"] = headers.get("X-Forwarded-For") or inet_ntoa(pack(">I", randint(1, 0xffffffff)))
         return await super().request(method, url, headers=headers, **kwargs)
 
     async def get(self, url: str, *, allow_redirects: bool = True, **kwargs) -> ClientResponse:

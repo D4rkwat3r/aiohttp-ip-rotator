@@ -1,0 +1,2 @@
+aioboto3
+aiohttp

@@ -1,6 +1,11 @@
 # aiohttp-ip-rotator
 An asynchronous alternative to the requests-ip-rotator  (https://github.com/Ge0rg3/requests-ip-rotator) library based on aiohttp, completely copying its functionality
 
+## Installation
+```commandline
+pip install aiohttp-ip-rotator
+```
+
 ## Example
 ```python3
 from asyncio import get_event_loop

@@ -186,7 +186,7 @@ class RotatingClientSession(ClientSession):
         self._print_if_verbose(f"API launched in {len(self.endpoints)} regions out of {len(self.regions)}")
         self.active = True
 
-    async def request(self, method: str, url: str, **kwargs) -> ClientResponse:
+    def request(self, method: str, url: str, **kwargs) -> ClientResponse:
         if len(self.endpoints) == 0:
             raise RuntimeError("To send requests using the RotatingClientSession class, "
                                "first call [your RotatingClientSession instance].start() "
@@ -204,7 +204,7 @@ class RotatingClientSession(ClientSession):
         kwargs.pop("headers", None)
         headers["X-Host"] = self.host_header
         headers["X-Forwarded-Header"] = headers.get("X-Forwarded-For") or inet_ntoa(pack(">I", randint(1, 0xffffffff)))
-        return await super().request(method, url, headers=headers, **kwargs)
+        return super().request(method, url, headers=headers, **kwargs)
 
     async def get(self, url: str, *, allow_redirects: bool = True, **kwargs) -> ClientResponse:
         return await self.request("GET", url, allow_redirects=allow_redirects, **kwargs)
